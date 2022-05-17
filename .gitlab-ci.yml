@@ -1,0 +1,21 @@
+stages:
+  - deploy
+
+deploy_live:
+  stage: deploy
+  environment:
+    name: live
+  before_script:
+    # Setup SSH deploy keys
+    - apt-get update
+    - 'which ssh-agent || ( apt-get install -qq openssh-client rsync )'
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+  script:
+    - ssh $SSH_USER@$SSH_IP "mkdir -p /home/$SSH_USER/public_html/skitab && chmod 755 /home/$SSH_USER/public_html/skitab"
+    - rsync -av -e ssh . $SSH_USER@$SSH_IP:/home/$SSH_USER/public_html/skitab/ --progress --exclude '.git' --exclude '.gitlab-ci.yml' --exclude '.env' --exclude '.htaccess'z
+    #- ssh $SSH_USER@$SSH_IP "cd public_html/skitab/ && php artisan migrate"
+  only:
+    - master
